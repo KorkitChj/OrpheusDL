@@ -1,6 +1,7 @@
 import logging, os, ffmpeg, sys
 import shutil
 import unicodedata
+import subprocess
 from dataclasses import asdict
 from time import strftime, gmtime
 
@@ -111,6 +112,11 @@ class Downloader:
                 with open(m3u_playlist_path, 'a', encoding='utf-8') as f:
                     f.write('#EXTM3U\n\n')
 
+            if self.is_path_valid(m3u_playlist_path):
+                print(f"The path {m3u_playlist_path} is valid.")
+            else:
+                print(f"The path {m3u_playlist_path} is not valid.")
+
         tracks_errored = set()
         if custom_module:
             supported_modes = self.module_settings[custom_module].module_supported_modes 
@@ -154,9 +160,19 @@ class Downloader:
                 self.download_track(track_id, album_location=playlist_path, track_index=index, number_of_tracks=number_of_tracks, indent_level=2, m3u_playlist=m3u_playlist_path, extra_kwargs=playlist_info.track_extra_kwargs)
 
         self.set_indent_number(1)
+        # รัน PowerShell script
+        try:
+            subprocess.run(
+                ["powershell", "-ExecutionPolicy", "Bypass", "-File", "D:\\OrpheusOL\\OrpheusDL\\set_utf8.ps1",
+                 os.path.dirname(m3u_playlist_path)], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error occurred while running PowerShell script: {e}")
         self.print(f'=== Playlist {playlist_info.name} downloaded ===', drop_level=1)
 
         if tracks_errored: logging.debug('Failed tracks: ' + ', '.join(tracks_errored))
+
+    def is_path_valid(self, path):
+        return os.path.exists(path)
 
     @staticmethod
     def _get_artist_initials_from_name(album_info: AlbumInfo) -> str:
@@ -631,7 +647,6 @@ class Downloader:
             self.print('Tagging failed, tags saved to text file')
         if delete_cover:
             silentremove(cover_temp_location)
-        
         self.print(f'=== Track {track_id} downloaded ===', drop_level=1)
 
     def _get_artwork_settings(self, module_name = None, is_external = False):
