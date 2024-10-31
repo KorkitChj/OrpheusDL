@@ -26,6 +26,20 @@ def beauty_format_seconds(seconds: int) -> str:
     return strftime(time_format, time_data)
 
 
+def is_path_valid(path):
+    return os.path.exists(path)
+
+
+def _set_utf8_on_windows_with_ps1(path):
+    # รัน PowerShell script
+    try:
+        subprocess.run(
+            ["powershell", "-ExecutionPolicy", "Bypass", "-File", "D:\\OrpheusOL\\OrpheusDL\\set_utf8.ps1",
+             os.path.dirname(path)], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error occurred while running PowerShell script: {e}")
+
+
 class Downloader:
     def __init__(self, settings, module_controls, oprinter, path):
         self.path = path if path.endswith('/') else path + '/' 
@@ -112,7 +126,7 @@ class Downloader:
                 with open(m3u_playlist_path, 'a', encoding='utf-8') as f:
                     f.write('#EXTM3U\n\n')
 
-            if self.is_path_valid(m3u_playlist_path):
+            if is_path_valid(m3u_playlist_path):
                 print(f"The path {m3u_playlist_path} is valid.")
             else:
                 print(f"The path {m3u_playlist_path} is not valid.")
@@ -160,19 +174,10 @@ class Downloader:
                 self.download_track(track_id, album_location=playlist_path, track_index=index, number_of_tracks=number_of_tracks, indent_level=2, m3u_playlist=m3u_playlist_path, extra_kwargs=playlist_info.track_extra_kwargs)
 
         self.set_indent_number(1)
-        # รัน PowerShell script
-        try:
-            subprocess.run(
-                ["powershell", "-ExecutionPolicy", "Bypass", "-File", "D:\\OrpheusOL\\OrpheusDL\\set_utf8.ps1",
-                 os.path.dirname(m3u_playlist_path)], check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Error occurred while running PowerShell script: {e}")
+        _set_utf8_on_windows_with_ps1(m3u_playlist_path)
         self.print(f'=== Playlist {playlist_info.name} downloaded ===', drop_level=1)
 
         if tracks_errored: logging.debug('Failed tracks: ' + ', '.join(tracks_errored))
-
-    def is_path_valid(self, path):
-        return os.path.exists(path)
 
     @staticmethod
     def _get_artist_initials_from_name(album_info: AlbumInfo) -> str:
